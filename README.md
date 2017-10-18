@@ -5,3 +5,5 @@
 	ej: #> CREATE DATABASE clan;
 3. restaurar la BD en su servidor mysql local
 4. configurar wp-config con los datos de su servidor mysql local 
+	4.1. 	user: admin_clan
+			pass: #)8!HoKkMICJSR@JL8
