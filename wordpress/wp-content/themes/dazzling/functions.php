@@ -1,4 +1,121 @@
 <?php
+add_action('wp_ajax_nopriv_enviar_mensaje_privado','enviar_mensaje_privado');
+add_action('wp_ajax_enviar_mensaje_privado','enviar_mensaje_privado');
+
+function enviar_mensaje_privado(){
+  global $wpdb;
+  $data = array('mensaje' => $_POST['mensaje'],
+    'referencia_remitente' => isset($_POST['id_remitente'])?(int)$_POST['id_remitente']:-1,
+    'referencia_destinatario' => isset($_POST['id_destinatario'])?(int)$_POST['id_destinatario']:-1,
+    'fecha' => current_time('mysql' ),
+    'estado_mensaje'=>'no_leido'
+    );
+  $results = $wpdb->insert( "clan_mensajes_privados", $data);
+  //echo $wpdb->insert_id;
+  echo $wpdb->last_query;
+  wp_die();
+}
+add_action('wp_ajax_nopriv_almacenar_mensaje','almacenar_mensaje');
+add_action('wp_ajax_almacenar_mensaje','almacenar_mensaje');
+
+function almacenar_mensaje(){
+  global $wpdb;
+  $data = array('mensaje' => $_POST['mensaje'],
+    'referencia_mensaje' => isset($_POST['referencia_mensaje'])?$_POST['referencia_mensaje']:-1,
+    'fecha_mensaje' => current_time( 'mysql' ),
+    'color'=>isset($_POST['color'])?$_POST['color']:'#96BBCC'
+    );
+  $results = $wpdb->insert( "clan_mensajes", $data);
+  var_export($results);
+  echo $wpdb->insert_id;
+  die();
+}
+
+add_action('wp_ajax_nopriv_almacenar_avatar','almacenar_avatar');
+add_action('wp_ajax_almacenar_avatar','almacenar_avatar');
+
+function almacenar_avatar(){
+	$img = isset($_POST['avatar'])?$_POST['avatar']:""; // Your data 'data:image/png;base64,AAAFBfj42Pj4';
+  $capas = isset($_POST['capas'])?$_POST['capas']:""; 
+	$nickname = isset($_POST['nickname'])?$_POST['nickname']:""; 
+	if($img==""){
+		echo "error";
+		die();
+	}
+	$img = str_replace('data:image/png;base64,', '', $img);
+	$img = str_replace(' ', '+', $img);
+	$data = base64_decode($img);
+	$current_user = wp_get_current_user();
+  $avatar_option = "avatar_{$current_user->user_login}";
+	$nickname_option = "nickname_{$current_user->user_login}";
+  if($nickname!=""){
+    if(get_option($nickname_option)===false){
+      add_option( $nickname_option, $nickname, '', 'yes' );
+    }else{
+      update_option( $nickname_option, $nickname, '', 'yes' );
+    }
+  }
+	if(get_option($avatar_option)===false){
+		add_option( $avatar_option, $capas, '', 'yes' );
+	}else{
+		update_option( $avatar_option, $capas, '', 'yes' );
+	}
+	file_put_contents("/var/www/html/wp-content/avatar/avatares/{$avatar_option}.png", $data);
+  	wp_die();
+}
+
+add_action('wp_ajax_nopriv_almacenar_background','almacenar_background');
+add_action('wp_ajax_almacenar_background','almacenar_background');
+
+function almacenar_background()
+{
+
+  $color = isset($_POST['color_background'])?$_POST['color_background']:"rgb(0, 190, 161)";
+  $current_user = wp_get_current_user();
+  $v_username=$current_user->user_login."color_background";
+  if(get_option($v_username)===false){
+    add_option( $v_username, $color, '', 'yes' );
+  }else{
+    update_option( $v_username, $color, '', 'yes' );
+  }
+  wp_die();
+}
+
+function load_scripts() {
+    global $post;
+    if( is_page() || is_single() )
+    {
+        switch($post->post_name) // post_name is the post slug which is more consistent for matching to here
+        {
+            case 'chat-2':
+                wp_enqueue_script('chat-2', 'https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.1.0/socket.io.js', array('jquery'), '', false);
+             break;
+            case 'personalizar':
+                wp_enqueue_script('personalizar', '/wp-includes/jquery-ui-1.12.1.custom/jquery-ui.min.js', array('jquery'), '', false);
+             break;
+             default:
+                wp_enqueue_script('personalizar', '/wp-content/themes/dazzling/custom.js', array('jquery'), '', false);
+
+        }
+    } 
+}
+
+add_action('wp_enqueue_scripts', 'load_scripts');
+
+/* redirect users to front page after login */
+add_action( 'init', 'cyb_restrict_guest_access' );
+function cyb_restrict_guest_access() {
+    global $wp;
+    if( ! is_user_logged_in() && ! cyb_is_login_page() ) {
+        wp_redirect( wp_login_url( site_url( $wp->request ) ) );
+        exit;
+    }
+}
+
+function cyb_is_login_page() {
+    return in_array($GLOBALS['pagenow'], array('wp-login.php'));
+}
+
 /**
  * Dazzling functions and definitions
  *
@@ -53,6 +170,17 @@ function dazzling_setup() {
 
   add_image_size( 'dazzling-featured', 730, 410, true );
   add_image_size( 'tab-small', 60, 60 , true); // Small Thumbnail
+
+
+
+  add_action( 'login_enqueue_scripts', 'enqueue_my_script' );  
+
+  function enqueue_my_script( $page ) {
+      wp_enqueue_style( 'my-script', '/login/custom-login-styles.css');
+      wp_enqueue_script( 'my-script', '/login/custom-login.js', array('jquery'), null, true );
+  }
+
+
 
   // This theme uses wp_nav_menu() in one location.
   register_nav_menus( array(
